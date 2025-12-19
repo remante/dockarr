@@ -1,0 +1,119 @@
+services:
+  radarr:
+    container_name: radarr
+    hostname: radarr.internal
+    image: ghcr.io/hotio/radarr:latest
+    restart: unless-stopped
+    logging:
+      driver: json-file
+    ports:
+      - 7878:7878
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Stockholm
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /docker/appdata/radarr:/config
+      - /your_path/to/data:/data
+  sonarr:
+    container_name: sonarr
+    hostname: sonarr.internal
+    image: ghcr.io/hotio/sonarr:latest
+    restart: unless-stopped
+    logging:
+      driver: json-file
+    ports:
+      - 8989:8989
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Stockholm
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /docker/appdata/sonarr:/config
+      - /your_path/to/data:/data
+  bazarr:
+    container_name: bazarr
+    hostname: bazarr.internal
+    image: ghcr.io/hotio/bazarr:latest
+    restart: unless-stopped
+    logging:
+      driver: json-file
+    ports:
+      - 6767:6767
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Stockholm
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /docker/appdata/bazarr:/config
+      - /your_path/to/data/media:/data/media
+  sabnzbd:
+    container_name: sabnzbd
+    hostname: sabnzbd.internal
+    image: ghcr.io/hotio/sabnzbd:latest
+    restart: unless-stopped
+    logging:
+      driver: json-file
+    ports:
+      - 8080:8080
+      - 9090:9090
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Stockholm
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /docker/appdata/sabnzbd:/config
+      - /your_path/to/data/usenet:/data/usenet:rw
+  prowlarr:
+    container_name: prowlarr
+    image: ghcr.io/hotio/prowlarr
+    ports:
+      - "9696:9696"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - UMASK=002
+      - TZ=Europe/Stockholm
+    volumes:
+      - /config:/config
+  qbittorrent:
+    container_name: qbittorrent
+    image: ghcr.io/hotio/qbittorrent
+    network_mode: "service:tailscale"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - UMASK=002
+      - TZ=Europe/Stockholm
+      - WEBUI_PORTS=8585/tcp,8585/udp
+      - LIBTORRENT=v1
+    volumes:
+      - /config:/config
+      - /data:/data
+      - /your_path/to/data/torrents:/data/torrents:rw
+  tailscale:
+    container_name: tailscale
+    image: tailscale/tailscale:stable
+    hostname: arr-suit-tail
+    ports:
+      - 8585:8585
+    environment:
+      - TS_AUTHKEY=tskey-auth-ADD_YOUR_OWN_TAILSCALE_AUTHKEY
+      - TS_USERSPACE=false
+      - TS_ACCEPT_DNS=false
+      - TS_EXTRA_ARGS=--accept-routes --exit-node="ADD YOUR EXIT NODE OF CHOICE" --exit-node-allow-lan-access=true --reset
+      - TS_STATE_DIR=/var/lib/tailscale
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Stockholm
+    volumes:
+      - /tailscale:/var/lib/tailscale # State data will be stored in this directory 
+      - /dev/net/tun:/dev/net/tun # Required for tailscale to work 
+    cap_add: # Required for tailscale to work 
+      - net_admin
+      - sys_module
+    restart: unless-stopped
