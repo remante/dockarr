@@ -15,7 +15,7 @@ services:
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /docker/appdata/radarr:/config
-      - /your_path/to/data:/data
+      - /your_path/to/data:/data #ADD YOUR OWN PATH
   sonarr:
     container_name: sonarr
     hostname: sonarr.internal
@@ -32,7 +32,7 @@ services:
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /docker/appdata/sonarr:/config
-      - /your_path/to/data:/data
+      - /your_path/to/data:/data #ADD YOUR OWN PATH
   bazarr:
     container_name: bazarr
     hostname: bazarr.internal
@@ -49,7 +49,7 @@ services:
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /docker/appdata/bazarr:/config
-      - /your_path/to/data/media:/data/media
+      - /your_path/to/data/media:/data/media #ADD YOUR OWN PATH
   sabnzbd:
     container_name: sabnzbd
     hostname: sabnzbd.internal
@@ -67,7 +67,7 @@ services:
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /docker/appdata/sabnzbd:/config
-      - /your_path/to/data/usenet:/data/usenet:rw
+      - /your_path/to/data/usenet:/data/usenet:rw #ADD YOUR OWN PATH
   prowlarr:
     container_name: prowlarr
     image: ghcr.io/hotio/prowlarr
@@ -94,7 +94,7 @@ services:
     volumes:
       - /config:/config
       - /data:/data
-      - /your_path/to/data/torrents:/data/torrents:rw
+      - /your_path/to/data/torrents:/data/torrents:rw #ADD YOUR OWN PATH
   tailscale:
     container_name: tailscale
     image: tailscale/tailscale:stable
@@ -102,7 +102,7 @@ services:
     ports:
       - 8585:8585
     environment:
-      - TS_AUTHKEY=tskey-auth-ADD_YOUR_OWN_TAILSCALE_AUTHKEY
+      - TS_AUTHKEY=tskey-auth-ADD_YOUR_OWN_TAILSCALE_AUTHKEY #ADD YOUR OWN TAILSCALE AUTH-KEY
       - TS_USERSPACE=false
       - TS_ACCEPT_DNS=false
       - TS_EXTRA_ARGS=--accept-routes --exit-node="ADD YOUR EXIT NODE OF CHOICE" --exit-node-allow-lan-access=true --reset
