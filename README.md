@@ -1,7 +1,8 @@
-<img src="" alt="" align="middle" width="auto" height="auto"><h1 align="center">Dock*arr</h1>
+<p align="center">
+      <img src="dockarr_logo.jpeg" width="450" height="auto" align="middle">
+</p>
+<h1 align="center">Dock*arr</h1>
 <p align="center"><a href="#project-description">Project Description</a> - <a href="#key-features">Key Features</a>
-
-<img src="" alt="" align="middle" width="auto" height="auto">
 
 ## Project Description
 
