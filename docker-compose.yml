@@ -105,7 +105,7 @@ services:
       - TS_AUTHKEY=tskey-auth-ADD_YOUR_OWN_TAILSCALE_AUTHKEY #ADD YOUR OWN TAILSCALE AUTH-KEY
       - TS_USERSPACE=false
       - TS_ACCEPT_DNS=false
-      - TS_EXTRA_ARGS=--accept-routes --exit-node="ADD YOUR EXIT NODE OF CHOICE" --exit-node-allow-lan-access=true --reset
+      - TS_EXTRA_ARGS=--accept-routes --exit-node="ADD YOUR EXIT NODE OF CHOICE" --advertise-tags=tag:container --exit-node-allow-lan-access=true --reset
       - TS_STATE_DIR=/var/lib/tailscale
       - PUID=1000
       - PGID=1000
