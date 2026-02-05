@@ -6,7 +6,7 @@
 
 ## Project Description
 
-This is a combined docker-compose file that includes everything needed to host your own radarr, sonarr, prowlarr, bazarr, sabnzbd, qbitorrent flaresolverr and tailscale with Mullvad VPN exit node.
+This is a combined docker-compose file that includes everything needed to host your own radarr, sonarr, prowlarr, bazarr, flaresolverr, sabnzbd, qbitorrent and tailscale with Mullvad VPN exit node.
 
 It uses hard links or "atomic links", it is very important to follow the map structure guide to get it to work fully.
 
