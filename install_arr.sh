@@ -231,4 +231,149 @@ services:
     logging:
       driver: json-file
     ports:
-      - 8989:8
+      - 8989:8989
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Stockholm
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /docker/appdata/sonarr:/config
+      - ${SONARR_PATH}:/data
+
+  bazarr:
+    container_name: bazarr
+    hostname: bazarr.internal
+    image: ghcr.io/hotio/bazarr:latest
+    restart: unless-stopped
+    logging:
+      driver: json-file
+    ports:
+      - 6767:6767
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Stockholm
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /docker/appdata/bazarr:/config
+      - ${BAZARR_PATH}/media:/data/media
+
+  sabnzbd:
+    container_name: sabnzbd
+    hostname: sabnzbd.internal
+    image: ghcr.io/hotio/sabnzbd:latest
+    restart: unless-stopped
+    logging:
+      driver: json-file
+    ports:
+      - 8080:8080
+      - 9090:9090
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Stockholm
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /docker/appdata/sabnzbd:/config
+      - ${SABNZBD_PATH}/usenet:/data/usenet:rw
+
+  prowlarr:
+    container_name: prowlarr
+    image: ghcr.io/hotio/prowlarr
+    ports:
+      - "9696:9696"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - UMASK=002
+      - TZ=Europe/Stockholm
+    volumes:
+      - /config:/config
+
+  qbittorrent:
+    container_name: qbittorrent
+    image: ghcr.io/hotio/qbittorrent
+    network_mode: "service:tailscale"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - UMASK=002
+      - TZ=Europe/Stockholm
+      - WEBUI_PORTS=8585/tcp,8585/udp
+      - LIBTORRENT=v1
+    volumes:
+      - /config:/config
+      - ${QB_PATH}:/data
+      - ${QB_PATH}/torrents:/data/torrents:rw
+
+  tailscale:
+    container_name: tailscale
+    image: tailscale/tailscale:stable
+    hostname: arr-suit-tail
+    ports:
+      - 8585:8585
+    environment:
+      - TS_AUTHKEY=${TS_AUTHKEY}
+      - TS_USERSPACE=false
+      - TS_ACCEPT_DNS=false
+      - TS_EXTRA_ARGS=--accept-routes --exit-node="${TS_EXIT_NODE}" --advertise-tags=tag:container --exit-node-allow-lan-access=true --reset
+      - TS_STATE_DIR=/var/lib/tailscale
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Stockholm
+    volumes:
+      - /tailscale:/var/lib/tailscale
+      - /dev/net/tun:/dev/net/tun
+    cap_add:
+      - net_admin
+      - sys_module
+    restart: unless-stopped
+
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: flaresolverr
+    environment:
+      - LOG_LEVEL=\${LOG_LEVEL:-info}
+      - LOG_HTML=\${LOG_HTML:-false}
+      - CAPTCHA_SOLVER=\${CAPTCHA_SOLVER:-none}
+      - TZ=Europe/Stockholm
+    ports:
+      - "\${PORT:-8191}:8191"
+    restart: unless-stopped
+EOF
+
+success "${COMPOSE_FILE} written."
+
+# ── Final instructions -----------------------------------------
+echo ""
+info "Next steps:"
+cat <<EOT
+  1. Ensure Docker is running (e.g. \`sudo systemctl status docker\`).
+  2. From the directory containing ${COMPOSE_FILE}, run:
+        ${GREEN}docker compose up -d${RESET}
+  3. Access the web UIs:
+        • Radarr   – http://localhost:7878
+        • Sonarr   – http://localhost:8989
+        • Bazarr   – http://localhost:6767
+        • Sabnzbd  – http://localhost:8080
+        • qBittorrent – http://localhost:8585
+        • Prowlarr – http://localhost:9696
+        • FlareSolverr – http://localhost:8191
+EOT
+
+read -rp "$(printf "${YELLOW}Do you want me to start the stack now? (y/N) ${RESET}")" START_NOW
+if [[ "$START_NOW" =~ ^[Yy]$ ]]; then
+    info "Starting containers…"
+    docker compose up -d
+    if [[ $? -eq 0 ]]; then
+        success "All services are up!"
+    else
+        error "Docker compose reported an error. Please check the output above."
+    fi
+else
+    echo "You can start it later with: ${GREEN}docker compose up -d${RESET}"
+fi
+
+echo ""
+success "${BOLD}Installation script finished.${RESET}"
