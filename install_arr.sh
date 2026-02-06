@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+# ------------------------------------------------------------
+#  Lumo‑style colourful installer for the ARR‑suite stack
+# ------------------------------------------------------------
+
 # ── Colour definitions ─────────────────────────────────────
 RED=$(tput setaf 1)
 GREEN=$(tput setaf 2)
@@ -16,16 +20,119 @@ success() { echo -e "${GREEN}${BOLD}[OK]${RESET} $*"; }
 warn()    { echo -e "${YELLOW}${BOLD}[WARN]${RESET} $*"; }
 error()   { echo -e "${RED}${BOLD}[ERROR]${RESET} $*"; }
 
+# ── Pre‑flight: Docker & Docker‑Compose check ─────────────────
+install_debian_ubuntu() {
+    info "Updating package index..."
+    sudo apt-get update -y
+
+    info "Installing prerequisite packages..."
+    sudo apt-get install -y ca-certificates curl gnupg lsb-release
+
+    info "Adding Docker’s official GPG key..."
+    sudo mkdir -p /etc/apt/keyrings
+    curl -fsSL https://download.docker.com/linux/${DISTRO}/gpg |
+        sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+
+    info "Setting up the stable Docker repository..."
+    echo \
+      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
+      https://download.docker.com/linux/${DISTRO} \
+      $(lsb_release -cs) stable" |
+      sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+    sudo apt-get update -y
+    sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+}
+
+install_fedora() {
+    sudo dnf -y install dnf-plugins-core
+    sudo dnf config-manager \
+        --add-repo \
+        https://download.docker.com/linux/fedora/docker-ce.repo
+    sudo dnf -y install docker-ce docker-ce-cli containerd.io docker-compose-plugin
+    sudo systemctl enable --now docker
+}
+
+install_opensuse() {
+    sudo zypper refresh
+    sudo zypper install -y docker docker-compose
+    sudo systemctl enable --now docker
+}
+
+install_arch() {
+    sudo pacman -Sy --noconfirm docker docker-compose
+    sudo systemctl enable --now docker
+}
+
+check_prereqs() {
+    local missing=0
+
+    # Docker binary
+    if ! command -v docker >/dev/null 2>&1; then
+        warn "Docker engine is not installed."
+        missing=$((missing+1))
+    else
+        info "Docker engine found: $(docker --version | head -n1)"
+    fi
+
+    # Docker Compose (v2 plugin, invoked as 'docker compose')
+    if ! docker compose version >/dev/null 2>&1; then
+        warn "Docker Compose (v2) is not installed."
+        missing=$((missing+1))
+    else
+        info "Docker Compose found: $(docker compose version | head -n1)"
+    fi
+
+    if (( missing == 0 )); then
+        return 0   # everything is already there
+    fi
+
+    echo ""
+    read -rp "$(printf "${YELLOW}Do you want to install the missing component(s) now? (y/N) ${RESET}")" INSTALL_NOW
+    if [[ ! "$INSTALL_NOW" =~ ^[Yy]$ ]]; then
+        error "Missing dependencies – aborting installation."
+        exit 1
+    fi
+
+    # ── Choose distribution ───────────────────────────────────────
+    echo ""
+    echo "Select your Linux distribution (enter the number):"
+    echo "  1) Debian"
+    echo "  2) Ubuntu"
+    echo "  3) Fedora"
+    echo "  4) openSUSE"
+    echo "  5) Arch Linux"
+    read -rp "$(printf "${BLUE}Your choice: ${RESET}")" DISTRO_CHOICE
+
+    case "$DISTRO_CHOICE" in
+        1) DISTRO="debian";  install_debian_ubuntu ;;
+        2) DISTRO="ubuntu";  install_debian_ubuntu ;;
+        3) DISTRO="fedora";  install_fedora ;;
+        4) DISTRO="opensuse";install_opensuse ;;
+        5) DISTRO="arch";    install_arch ;;
+        *) error "Invalid selection – aborting."; exit 1 ;;
+    esac
+
+    # Verify installation succeeded
+    if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+        success "All prerequisites are now installed."
+    else
+        error "Installation failed – please check the output above."
+        exit 1
+    fi
+}
+# ----------------------------------------------------------------
+
+# Run the pre‑flight check before anything else
+check_prereqs
+
 # ── Welcome banner ─────────────────────────────────────────
 cat <<'EOF'
-
-______           _                   
-|  _  \         | |                  
-| | | |___   ___| | ____ _ _ __ _ __ 
-| | | / _ \ / __| |/ / _` | '__| '__|
-| |/ / (_) | (__|   < (_| | |  | |   
-|___/ \___/ \___|_|\_\__,_|_|  |_|   
-                                     
+ __      __       _           _       
+ \ \    / /__ _ _| |_ ___ _ _| |_ ___ 
+  \ \/\/ / -_) '_|  _/ -_) '_|  _/ -_)
+   \_/\_/\___|_|  \__\___|_|  \__\___|
+                                      
 EOF
 echo -e "${MAGENTA}Welcome to the ARR‑suite Docker installer!${RESET}"
 echo ""
@@ -225,11 +332,10 @@ success "${COMPOSE_FILE} written."
 echo ""
 info "Next steps:"
 cat <<EOT
-  1. Make sure Docker and Docker Compose are installed.
-     (Ubuntu/Debian example: sudo apt install docker.io docker-compose)
-  2. From the directory containing ${COMPOSE_FILE}, run:
+  1. Verify Docker is running (e.g. \`sudo systemctl status docker\`).
+  2. In the directory containing ${COMPOSE_FILE}, run:
         ${GREEN}docker compose up -d${RESET}
-  3. Access the web UIs:
+  3. Open the web interfaces:
         • Radarr   – http://localhost:7878
         • Sonarr   – http://localhost:8989
         • Bazarr   – http://localhost:6767
@@ -246,7 +352,7 @@ if [[ "$START_NOW" =~ ^[Yy]$ ]]; then
     if [[ $? -eq 0 ]]; then
         success "All services are up!"
     else
-        error "Docker compose reported an error. Please check the output above."
+        error "Docker compose reported an error. Please inspect the output above."
     fi
 else
     echo "You can start it later with: ${GREEN}docker compose up -d${RESET}"
