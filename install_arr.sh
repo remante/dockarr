@@ -80,60 +80,65 @@ check_prereqs() {
         info "Docker Compose found: $(docker compose version | head -n1)"
     fi
 
-    if (( missing == 0 )); then
-        return 0   # everything already present
+    if (( missing > 0 )); then
+        echo ""
+        read -rp "$(printf "${YELLOW}Do you want to install the missing component(s) now? (y/N) ${RESET}")" INSTALL_NOW
+        if [[ ! "$INSTALL_NOW" =~ ^[Yy]$ ]]; then
+            error "Missing dependencies – aborting installation."
+            exit 1
+        fi
+
+        # ── Choose distribution ─────────────────────────────────────
+        echo ""
+        echo "Select your Linux distribution (enter the number):"
+        echo "  1) Debian"
+        echo "  2) Ubuntu"
+        echo "  3) Fedora"
+        echo "  4) openSUSE"
+        echo "  5) Arch Linux"
+        read -rp "$(printf "${BLUE}Your choice: ${RESET}")" DISTRO_CHOICE
+
+        case "$DISTRO_CHOICE" in
+            1) DISTRO="debian";  install_debian_ubuntu ;;
+            2) DISTRO="ubuntu";  install_debian_ubuntu ;;
+            3) DISTRO="fedora";  install_fedora ;;
+            4) DISTRO="opensuse";install_opensuse ;;
+            5) DISTRO="arch";    install_arch ;;
+            *) error "Invalid selection – aborting."; exit 1 ;;
+        esac
+
+        # Verify installation succeeded
+        if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+            success "All prerequisites are now installed."
+        else
+            error "Installation failed – please check the output above."
+            exit 1
+        fi
     fi
 
-    echo ""
-    read -rp "$(printf "${YELLOW}Do you want to install the missing component(s) now? (y/N) ${RESET}")" INSTALL_NOW
-    if [[ ! "$INSTALL_NOW" =~ ^[Yy]$ ]]; then
-        error "Missing dependencies – aborting installation."
-        exit 1
-    fi
-
-    # ── Choose distribution ─────────────────────────────────────
-    echo ""
-    echo "Select your Linux distribution (enter the number):"
-    echo "  1) Debian"
-    echo "  2) Ubuntu"
-    echo "  3) Fedora"
-    echo "  4) openSUSE"
-    echo "  5) Arch Linux"
-    read -rp "$(printf "${BLUE}Your choice: ${RESET}")" DISTRO_CHOICE
-
-    case "$DISTRO_CHOICE" in
-        1) DISTRO="debian";  install_debian_ubuntu ;;
-        2) DISTRO="ubuntu";  install_debian_ubuntu ;;
-        3) DISTRO="fedora";  install_fedora ;;
-        4) DISTRO="opensuse";install_opensuse ;;
-        5) DISTRO="arch";    install_arch ;;
-        *) error "Invalid selection – aborting."; exit 1 ;;
-    esac
-
-    # Verify installation succeeded
-    if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
-        success "All prerequisites are now installed."
-    else
-        error "Installation failed – please check the output above."
-        exit 1
-    fi
-
-    # ── Add current user to the docker group ─────────────────────
+    # ── ALWAYS add the current user to the docker group ─────────────
     if groups "$USER" | grep -qw docker; then
         info "User '$USER' is already a member of the 'docker' group."
     else
         info "Adding user '$USER' to the 'docker' group..."
         sudo usermod -aG docker "$USER"
         if [[ $? -eq 0 ]]; then
-            success "User added to 'docker' group."
-            # Activate the new group in the current shell session
-            info "Applying new group membership (newgrp docker)..."
-            exec newgrp docker "$0" "$@"
-            # The script will restart itself inside the new group; the lines below
-            # will not be reached in the original process.
+            success "User added to the 'docker' group."
         else
-            warn "Failed to add user to 'docker' group. You may need to log out/in manually."
+            warn "Failed to add user to the 'docker' group. You may need to run the command manually."
         fi
+    fi
+
+    # Apply the new group membership for the *current* session.
+    # We only re‑exec once – the environment variable prevents an infinite loop.
+    if [[ -z "$LUMO_REEXECED" ]]; then
+        info "Activating new group membership (newgrp docker)..."
+        export LUMO_REEXECED=1
+        exec newgrp docker "$0" "$@"
+        # The script restarts here inside the new group; the lines below
+        # are never executed in the original process.
+    else
+        success "Current session now has the 'docker' group membership."
     fi
 }
 # ----------------------------------------------------------------
