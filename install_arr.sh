@@ -132,7 +132,7 @@ check_prereqs() {
     # Apply the new group membership for the *current* session.
     # We only re‑exec once – the environment variable prevents an infinite loop.
     if [[ -z "$LUMO_REEXECED" ]]; then
-        info "Activating new group membership (newgrp docker)..."
+        info "Activating new group membership (newgrp docker)... Run the install command again."
         export LUMO_REEXECED=1
         exec newgrp docker "$0" "$@"
         # The script restarts here inside the new group; the lines below
